@@ -1,7 +1,7 @@
 #ifndef _NODE
 #define _NODE "NODE"
 #include <iostream>
-
+#include <cstring>
 #if defined(__linux__) || defined(__APPLE__)
 
 #if defined(__linux__) && defined(kernel_version_2_4)
@@ -14,17 +14,18 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+typedef int SOCKET;
 #define INVALID_SOCKET -1
 
 #elif defined(_WIN32)
 #include <winsock2.h>
+#define close(sockfd) closesocket(sockfd)
 typedef int socklen_t;
 #else
 #error OS Not supported
 #endif
 
-#include "clog.h"
-#include "shell.h"
+//#include "clog.h"
 
 #ifndef BUFFER_SIZE
 #define BUFFER_SIZE 256
@@ -34,24 +35,27 @@ typedef int socklen_t;
 #define CON_MAX_ATTEMPTS 5
 #endif
 
-class Node {
+#ifndef CLOG_H
+#define log_inf(...)
+#define log_err(...)
+#define log_per(...)
+#define log_fat(...)
+#endif
 
+typedef struct job job;
+typedef struct option option;
+
+class Node {
 protected:
-	#if defined(__linux__) || defined(__APPLE__)
-	int sockfd = 0;
-	int clients[100];
-	#elif defined(_WIN32)
 	SOCKET sockfd;
 	SOCKET clients[100];
-	#endif
-	const char *sh_process(int, job, const char *, int);
 public:
 	Node(void);
-	Node(int);
-
+	Node(SOCKET);
 	~Node(void);
 
-	int writeln(char *);
+	int writeln(const char *);
+	int writeln(const char *, int);
 	char *readln(void);
 	int write_data(void *, int);
 	void *read_data();
@@ -61,49 +65,68 @@ public:
 	int start_server(int);
 	int connect_server(const char *, int);
 
-	Node accept(int);
-	Node connect(const char *, int);
+	Node *accept(int);
+	Node *connect(const char *, int);
 
-	const char *process(int, job, char *);
+	int process(int, job *, const char *);
 	//int disconnect_al(void);
+};
+
+#define SH_BUFSIZE 1024 //shell read buffer size
+#define SH_TOK_BUFSIZE 64
+#define SH_TOK_DELIM " \t\r\n\a" //shell token delimeter
+
+struct option{
+    const char *word;
+    const char letter;
+    const char *description;
+};
+
+struct job{
+    const char *command;
+    const char *info;
+    int (*function)(int, char **, Node *);
+    int opt_length;
+    option *options;
 };
 
 Node::Node(){
 #if defined(_WIN32)
-			WSADATA wsa;
+		//irritating winsock initialization
+		WSADATA wsa;
     printf("\nInitialising Winsock...");
-    if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
-    {
+    if (WSAStartup(MAKEWORD(2,2),&wsa) != 0) {
         log_fat(_NODE_H, "Failed. Error Code : %d",WSAGetLastError());
     }
-		#endif
+#endif
 	}
 
-	Node::Node(int sockfd){
+	Node::Node(SOCKET sockfd)
+	{
 		this->sockfd = sockfd;
 	}
 
-
-Node	Node::accept(int port){
-		Node n(start_server(port));
-		return n;
-	}
-
 	Node::~Node(){
+	close(sockfd);
+	//irritatin winsock cleanup
 	#if defined(_WIN32)
 		WSACleanup();
-		#endif
+	#endif
 	}
-const char *Node::sh_process(int jlen, job *jobs, const char *c_line, int sockfd){
+
+int Node::process(int jlen, job *jobs, const char *cmd){
+		if(cmd == NULL)return -1;
 		int count = -1;
-		char *line = (char *)malloc(strlen(c_line));
-		strcpy(line, c_line);
+		int len = strlen(cmd);
+		if(len == 0)return 0;
+		log_inf("SERVER", "Request received: %s", cmd);
+		char *line = (char *)malloc(len);
+		strncpy(line, cmd, len);
 		ssize_t arg_buffsize = 64; //chage variably
-	    char **args = (char **)calloc(arg_buffsize, SH_BUFSIZE);
+	  char **args = (char **)calloc(arg_buffsize, SH_BUFSIZE);
 
-		 char *token = strtok(line, SH_TOK_DELIM);
-	    while(token != NULL){
-
+		char *token = strtok(line, SH_TOK_DELIM);
+		while(token != NULL){
 			args[++count] = token;
 			if(count == arg_buffsize){
 				arg_buffsize += 64;//change variably
@@ -111,55 +134,54 @@ const char *Node::sh_process(int jlen, job *jobs, const char *c_line, int sockfd
 			}
 			token = strtok(NULL, SH_TOK_DELIM);
 	    }
+		if(args[0] == NULL)return 0;
 		for (int i = 0; i < jlen; i++) {
 	        	if (strcmp(*args, jobs[i].command) == 0) {
-	            		return ((jobs[i].function)(count, ++args, sockfd)).msg;
+	            		return (jobs[i].function)(count, ++args, this);
 	        	}
 		}
-		printf("you clearly need 'help'\n");
-	    return "\0";//FIXME add custom codes to identify returns and errors
-	}
-
-const char *Node::process(int jlen, job *jobs, char *cmd){
-	return Node::sh_process(jlen, jobs, cmd, sockfd);
+		writeln("you clearly need 'help'\n");
+	  return 0;//FIXME add custom codes to identify returns and errors
 }
 
-int Node::writeln(char *buf, int len=-1){
-	if(len == -1)len=strlen(buf);
+int Node::writeln(const char *buf){
+	return writeln(buf, strlen(buf));
+}
+
+int Node::writeln(const char *buf, int len){
 	int bwrite = write(sockfd, buf, len);
 	//log_inf("CLIENT", "written buf: %s, sent: %d", buf, bwrite);
 	if(bwrite > 0){
 		if(bwrite < len){
-			return writeln(sockfd, buf+bwrite, len - bwrite);
+			return writeln(buf+bwrite, len - bwrite);
 		}
 		if(bwrite == len){
-			write(sockfd, "\n", 1);
+			send(sockfd, "\n", 1, 0);
 			//log_inf("CLIENT", "write sucessful");
 			return 0;
 		}
 	}
 	else if(bwrite == 0){
 		log_inf("CLIENT", "Unspecified write error");
-		return -1;
 	}
 	else if(bwrite < 0){
 		log_inf("CLIENT", "write error, exiting...");
-		return -1;
 	}
+	return -1;
 }
 
 char *Node::readln(){
 		char *buf = (char *)malloc(256);
 		int ptr = 0;
 		memset(buf, '\0', 256);
-		int quit=0;
+		int quit = 0;
 		for(ptr=0;quit!=1;ptr++){
 			int bread = read(sockfd, buf+ptr, 1);
 			if(bread > 0){
 				//log_inf("SERVER", "Content read[%d]: %c", ptr, buf[ptr]);
-				if(buf[ptr] == '\n'){
+				if(buf[ptr] == '\n' || buf[ptr] == '\r'){
 					buf[ptr] = '\0';
-					quit = 1;
+					return buf;
 				}
 			}
 			else if(bread == 0){//EOF hit, client disconnected
@@ -171,18 +193,18 @@ char *Node::readln(){
 				return NULL;
 			}
 		}
-
-Node Node::connect(const char *hostname, int port){
-	Node n(connect_server(hostname, port));
-	return n;
+		return NULL;
 }
+
+Node *Node::connect(const char *hostname, int port){
+	return new Node(connect_server(hostname, port));
+}
+
 int Node::connect_server(const char * hostname, int port){
 	struct sockaddr_in serv_addr;
 	struct hostent *server;
-#if defined(__linux__) || defined(__APPLE__)
-	int sockfd;
-#elif defined(_WIN32)
 	SOCKET sockfd;
+#if defined(_WIN32)
 	WSAData wsadata;
 	WSAStartup(MAKEWORD(2, 2), &wsadata);
 	if(LOBYTE(wsadata) != 2 || HIBYTE(wsadata) != 2){
@@ -202,6 +224,7 @@ int Node::connect_server(const char * hostname, int port){
 		log_err(_NODE, "Could not create socket");
 		return -1;
 	}
+
 	log_inf(_NODE, "Socket created");
 	if((server = gethostbyname(hostname))==NULL){
 		log_err(_NODE, "no such host found");
@@ -212,27 +235,30 @@ int Node::connect_server(const char * hostname, int port){
 	memcpy((char*)&serv_addr.sin_addr.s_addr, (char*)server->h_addr, server->h_length);
 	serv_addr.sin_port = htons( port );
 	int i = 0;
-	while (connect (sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) == -1){
+	while (::connect (sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) == -1){
 		if(i++ > CON_MAX_ATTEMPTS){
 			//guess other hostnames for the user
 			close(sockfd);
 			log_err(_NODE, "cannot establish connection to %s on port %d", hostname, port);
-			return NULL;
+			return -1;
 		}
 	}
 	log_inf(_NODE, "connection established successfully to %s on port %d", hostname, port);
-	return Node()
+	return sockfd;
 }
 
 #ifndef SERV_BACKLOG
 #define SERV_BACKLOG 10
 #endif
 
+Node *Node::accept(int port){
+	return new Node(start_server(port));
+}
 
 //TODO support multiple server options
 /** Starts the server with the standard IPv4 and TCP stack
  * @param port Port number for the server to start
- * @return Socket descriptor of the started server
+ * @return Node of the started server
  */
 int Node::start_server(int port){
 
@@ -257,8 +283,9 @@ int Node::start_server(int port){
 	socklen_t cli_size = sizeof(struct sockaddr_in);
 
 	if(cont == port){
+		SOCKET cli_sock =  ::accept(servfd, (struct sockaddr *)&client, &cli_size);
 		log_inf(_NODE, "Connection accepted");
-		return accept(servfd, (struct sockaddr *)&client, &cli_size);
+		return cli_sock;
 	}
 	if(cont == 0)
 		cont = port;
@@ -268,6 +295,13 @@ int Node::start_server(int port){
 		log_err(_NODE, "could not create socket");
 		return -1;
 	}
+
+	int reuseaddr = 1;
+	if(setsockopt(servfd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(int)) == -1){
+		log_err("SERVER", "cannot reuse socket");
+		return -1;
+	}
+
 	//Bind
 	if( bind(servfd,(struct sockaddr *)&server , sizeof(server)) < 0){
 		log_err(_NODE, "bind failed");
@@ -278,7 +312,7 @@ int Node::start_server(int port){
 	//Accept and incoming connection
 	log_inf(_NODE, "Waiting for incoming connections...");
 	//accept connection from an incoming client
-	int clifd = accept(servfd, (struct sockaddr *)&client, &cli_size);
+	int clifd = ::accept(servfd, (struct sockaddr *)&client, &cli_size);
 	if (clifd < 0){
 		log_inf(_NODE, "Accept failed");
 #if defined(__linux__) || defined(__APPLE__)
