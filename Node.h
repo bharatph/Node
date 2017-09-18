@@ -19,7 +19,7 @@ typedef int SOCKET;
 
 #elif defined(_WIN32)
 #include <winsock2.h>
-#define close(sockfd) closesocket(sockfd)
+#define close(node_sock) closesocket(node_sock)
 typedef int socklen_t;
 #else
 #error OS Not supported
@@ -47,9 +47,9 @@ namespace node
   class Node
   {
   protected:
-    SOCKET sockfd;
-    int start_server (int);
-    int connect_server (const char *, int);
+    SOCKET node_sock;
+    SOCKET start_server (int);
+    SOCKET connect_server (const char *, int);
   public:
 #define SH_BUFSIZE 1024		//shell read buffer size
 #define SH_TOK_BUFSIZE 64
@@ -85,7 +85,7 @@ namespace node
     int read_file (char *, char *);
 
     Node *accept (int);
-    Node *connect (const char *, int);
+    int connect (const char *, int);
 
     int process (int, job *, const char *);
     //int disconnect_al(void);
@@ -104,14 +104,14 @@ namespace node
 #endif
   }
 
-  Node::Node (SOCKET sockfd)
+  Node::Node (SOCKET node_sock)
   {
-    this->sockfd = sockfd;
+    this->node_sock = node_sock;
   }
 
   Node::~Node ()
   {
-    close (sockfd);
+    close (node_sock);
     //irritatin winsock cleanup
 #if defined(_WIN32)
     WSACleanup ();
@@ -163,7 +163,7 @@ namespace node
 
   int Node::writeln (const char *buf, int len)
   {
-    int bwrite = write (sockfd, buf, len);
+    int bwrite = write (node_sock, buf, len);
     //log_inf("CLIENT", "written buf: %s, sent: %d", buf, bwrite);
     if (bwrite > 0)
       {
@@ -173,7 +173,7 @@ namespace node
 	  }
 	if (bwrite == len)
 	  {
-	    send (sockfd, "\n", 1, 0);
+	    send (node_sock, "\n", 1, 0);
 	    //log_inf("CLIENT", "write sucessful");
 	    return 0;
 	  }
@@ -197,7 +197,7 @@ namespace node
     int quit = 0;
     for (ptr = 0; quit != 1; ptr++)
       {
-	int bread = read (sockfd, buf + ptr, 1);
+	int bread = read (node_sock, buf + ptr, 1);
 	if (bread > 0)
 	  {
 	    //log_inf("SERVER", "Content read[%d]: %c", ptr, buf[ptr]);
@@ -221,16 +221,18 @@ namespace node
     return NULL;
   }
 
-  Node *Node::connect (const char *hostname, int port)
+  int Node::connect (const char *hostname, int port)
   {
-    return new Node (connect_server (hostname, port));
+    if (connect_server (hostname, port) == INVALID_SOCKET){
+			return -1;
+		}
+		return 0;
   }
 
-  int Node::connect_server (const char *hostname, int port)
+  SOCKET Node::connect_server (const char *hostname, int port)
   {
     struct sockaddr_in serv_addr;
     struct hostent *server;
-    SOCKET sockfd;
 #if defined(_WIN32)
     WSAData wsadata;
     WSAStartup (MAKEWORD (2, 2), &wsadata);
@@ -250,8 +252,8 @@ namespace node
 	return -1;
       }
     //Create socket
-    sockfd = socket (AF_INET, SOCK_STREAM, 0);
-    if (sockfd == INVALID_SOCKET)
+    node_sock = socket (AF_INET, SOCK_STREAM, 0);
+    if (node_sock == INVALID_SOCKET)
       {
 	log_err (_NODE, "Could not create socket");
 	return -1;
@@ -270,13 +272,13 @@ namespace node
     serv_addr.sin_port = htons (port);
     int i = 0;
     while (::
-	   connect (sockfd, (struct sockaddr *) &serv_addr,
+	   connect (node_sock, (struct sockaddr *) &serv_addr,
 		    sizeof (serv_addr)) == -1)
       {
 	if (i++ > CON_MAX_ATTEMPTS)
 	  {
 	    //guess other hostnames for the user
-	    close (sockfd);
+	    close (node_sock);
 	    log_err (_NODE, "cannot establish connection to %s on port %d",
 		     hostname, port);
 	    return -1;
@@ -284,7 +286,7 @@ namespace node
       }
     log_inf (_NODE, "connection established successfully to %s on port %d",
 	     hostname, port);
-    return sockfd;
+    return node_sock;
   }
 
 #ifndef SERV_BACKLOG
@@ -301,23 +303,10 @@ namespace node
  * @param port Port number for the server to start
  * @return Node of the started server
  */
-  int Node::start_server (int port)
+  SOCKET Node::start_server (int port)
   {
-
     static int cont;
-#if defined(__linux__) || defined(__APPLE__)
-    static int servfd;
-#elif defined(_WIN32)
-    static SOCKET servfd;
-    WSAData wsadata;
-    WSAStartup (MAKEWORD (2, 2), &wsadata);
-    if (LOBYTE (wsadata) != 2 || HIBYTE (wsadata) != 2)
-      {
-	log_fat (_NODE, "Cannot initialize Winsock2 library, error code: %d",
-		 WSAGetLastError ());
-	return -1;
-      }
-#endif
+    static SOCKET node_sock;
 
     struct sockaddr_in server, client;
     //Prepare the sockaddr_in structure
@@ -328,7 +317,7 @@ namespace node
 
     if (cont == port)
       {
-	SOCKET cli_sock =::accept (servfd, (struct sockaddr *) &client,
+	SOCKET cli_sock =::accept (node_sock, (struct sockaddr *) &client,
 				   &cli_size);
 	log_inf (_NODE, "Connection accepted");
 	return cli_sock;
@@ -336,8 +325,8 @@ namespace node
     if (cont == 0)
       cont = port;
     //Create socket
-    servfd = socket (PF_INET, SOCK_STREAM, 0);
-    if (servfd == INVALID_SOCKET)
+    node_sock = socket (PF_INET, SOCK_STREAM, 0);
+    if (node_sock == INVALID_SOCKET)
       {
 	log_err (_NODE, "could not create socket");
 	return -1;
@@ -345,31 +334,31 @@ namespace node
 
     int reuseaddr = 1;
     if (setsockopt
-	(servfd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof (int)) == -1)
+	(node_sock, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof (int)) == -1)
       {
 	log_err ("SERVER", "cannot reuse socket");
 	return -1;
       }
 
     //Bind
-    if (bind (servfd, (struct sockaddr *) &server, sizeof (server)) < 0)
+    if (bind (node_sock, (struct sockaddr *) &server, sizeof (server)) < 0)
       {
 	log_err (_NODE, "bind failed");
 	return -1;
       }
     //Listen
-    listen (servfd, SERV_BACKLOG);
+    listen (node_sock, SERV_BACKLOG);
     //Accept and incoming connection
     log_inf (_NODE, "Waiting for incoming connections...");
     //accept connection from an incoming client
-    int clifd =::accept (servfd, (struct sockaddr *) &client, &cli_size);
+    int clifd =::accept (node_sock, (struct sockaddr *) &client, &cli_size);
     if (clifd < 0)
       {
 	log_inf (_NODE, "Accept failed");
 #if defined(__linux__) || defined(__APPLE__)
-	close (servfd);
+	close (node_sock);
 #elif defined(_WIN32)
-	closesocket (servfd);
+	closesocket (node_sock);
 #endif
 	return -1;
       }
