@@ -1,3 +1,0 @@
-rm test
-g++ test.cpp -o test -lpthread -Wall
-./test
