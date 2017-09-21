@@ -1,4 +1,4 @@
 cmake_minimum_required(VERSION 2.8)
 project(Node)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-add_library(Node SHARED Node.h)
+
+add_library(Node SHARED Node.h Node.cpp)
