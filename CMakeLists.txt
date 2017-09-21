@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 project(Node)
-
-add_library(Node SHARED Node.h Node.cpp)
+add_library(Node STATIC Node.h Node.cpp)
+if(WIN32)
+	target_link_libraries(Node wsock32)
+endif()
