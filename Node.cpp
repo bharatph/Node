@@ -1,5 +1,18 @@
 #include "Node.h"
 
+node::Node::Node()
+{
+#if defined(_WIN32)
+	//irritating winsock initialization
+	WSADATA wsa;
+	log_inf(_NODE_H, "\nInitialising Winsock...");
+	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+	{
+		log_fat(_NODE_H, "Failed. Error Code : %d", WSAGetLastError());
+	}
+#endif
+}
+
 node::Node::Node(SOCKET node_sock)
 {
 	this->node_sock = node_sock;

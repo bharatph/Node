@@ -93,18 +93,5 @@ namespace node
     int process (int, job *, const char *);
     //int disconnect_al(void);
   };
-
-  Node::Node()
-  {
-#if defined(_WIN32)
-	  //irritating winsock initialization
-	  WSADATA wsa;
-	  log_inf(_NODE_H, "\nInitialising Winsock...");
-	  if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
-	  {
-		  log_fat(_NODE_H, "Failed. Error Code : %d", WSAGetLastError());
-	  }
-#endif
-  };
 };
 #endif
