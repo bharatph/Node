@@ -1,6 +1,7 @@
 #ifndef _NODE
 #define _NODE "NODE"
 #include <iostream>
+#include <cstdlib>
 #include <cstring>
 #if defined(__linux__) || defined(__APPLE__)
 
