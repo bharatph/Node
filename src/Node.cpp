@@ -1,4 +1,4 @@
-#include "Node.h"
+#include <Node/Node.hpp>
 
 node::Node::Node()
 {
@@ -20,7 +20,7 @@ node::Node::Node(SOCKET node_sock)
 
 node::Node::~Node()
 {
-	close(node_sock);
+	::close(node_sock);
 	//irritatin winsock cleanup
 #if defined(_WIN32)
 	WSACleanup();
@@ -181,7 +181,7 @@ SOCKET node::Node::connect_server(const char *hostname, int port)
 		if (i++ > CON_MAX_ATTEMPTS)
 		{
 			//guess other hostnames for the user
-			close(node_sock);
+			::close(node_sock);
 			log_err(_NODE, "cannot establish connection to %s on port %d",
 				hostname, port);
 			return -1;
@@ -198,7 +198,11 @@ SOCKET node::Node::connect_server(const char *hostname, int port)
 
 node::Node *node::Node::accept(int port)
 {
-	return new node::Node(start_server(port));
+	int node_status =  start_server(port);
+	if(node_status < 0)
+		return nullptr;
+	else
+		return new node::Node(start_server(port));
 }
 
 //TODO support multiple server options
@@ -259,7 +263,7 @@ SOCKET node::Node::start_server(int port)
 	{
 		log_inf(_NODE, "Accept failed");
 #if defined(__linux__) || defined(__APPLE__)
-		close(node_sock);
+		::close(node_sock);
 #elif defined(_WIN32)
 		closesocket(node_sock);
 #endif
@@ -267,4 +271,13 @@ SOCKET node::Node::start_server(int port)
 	}
 	log_inf(_NODE, "Connection accepted");
 	return clifd;
+}
+
+void node::Node::close()
+{
+#if defined(__linux__) || defined(__APPLE__)
+	::close(node_sock);
+#elif defined(_WIN32)
+	closesocket(node_sock);
+#endif
 }

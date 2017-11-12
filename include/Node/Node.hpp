@@ -1,7 +1,6 @@
 #ifndef _NODE
 #define _NODE "NODE"
 #include <iostream>
-#include <cstdlib>
 #include <cstring>
 #if defined(__linux__) || defined(__APPLE__)
 
@@ -27,7 +26,7 @@ typedef int ssize_t;
 #error OS Not supported
 #endif
 
-//#include "clog.h"
+//#include <clog/clog.h>
 
 #ifndef BUFFER_SIZE
 #define BUFFER_SIZE 256
@@ -73,7 +72,6 @@ namespace node
       option *options;
     } job;
 
-
       Node (void);
       Node (SOCKET);
      ~Node (void);
@@ -92,7 +90,7 @@ namespace node
     int connect (const char *, int);
 
     int process (int, job *, const char *);
-    //int disconnect_al(void);
+    void close(void);
   };
 };
 #endif

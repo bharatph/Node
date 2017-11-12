@@ -1,0 +1,9 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+//cmake settings
+#define hades_VERSION_MAJOR @hades_VERSION_MAJOR@
+#define hades_VERSION_MINOR @hades_VERSION_MINOR@
+#define BUFFER_SIZE @BUFFER_SIZE@
+#define DEFAULT_PORT @DEFAULT_PORT@
+#cmakedefine ENABLE_LOG
+#endif
