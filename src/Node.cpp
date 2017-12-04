@@ -54,7 +54,7 @@ int node::Node::process(int jlen, job *jobs, const char *cmd) {
   return 0; // FIXME add custom codes to identify returns and errors
 }
 
-int node::Node::writeln(const char *buf) { return writeln(buf, strlen(buf)); }
+int node::Node::writeln(std::string buf) { return writeln(buf.c_str(), strlen(buf.c_str())); }
 
 int node::Node::writeln(const char *buf, int len) {
   int bwrite = send(node_sock, buf, len, 0);

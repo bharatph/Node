@@ -73,7 +73,7 @@ public:
   Node(SOCKET);
   ~Node(void);
 
-  int writeln(const char *);
+  int writeln(std::string);
   int writeln(const char *, int);
   const char *readln(void);
 #if defined(__linux__) || defined(__APPLE__)
