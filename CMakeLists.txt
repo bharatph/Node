@@ -14,9 +14,3 @@ target_include_directories(Node PUBLIC include)
 if(ENABLE_CLOG)
 	target_link_libraries(Node clog)
 endif()
-
-include(GNUInstallDirs)
-
-install(TARGETS Node 
-	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-	PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Node)
