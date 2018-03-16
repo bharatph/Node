@@ -220,7 +220,7 @@ SOCKET node::Node::start_server(int port) {
 #if defined(__linux__) || defined(__APPLE__)
     ::close(node_sock);
 #elif defined(_WIN32)
-    closesocket(node_sock);
+    ::close(node_sock);
 #endif
     return -1;
   }
@@ -232,6 +232,6 @@ void node::Node::close() {
 #if defined(__linux__) || defined(__APPLE__)
   ::close(node_sock);
 #elif defined(_WIN32)
-  closesocket(node_sock);
+  ::close(node_sock);
 #endif
 }
