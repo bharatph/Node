@@ -5,7 +5,7 @@ file(GLOB_RECURSE Node_SRCS "src/*.cpp")
 
 configure_file( ${PROJECT_SOURCE_DIR}/config.h.in ${PROJECT_SOURCE_DIR}/config.h)
 
-add_library(Node STATIC ${Node_HDRS} ${Node_SRCS})
+add_library(Node ${Node_HDRS} ${Node_SRCS})
 if(WIN32)
 	target_link_libraries(Node wsock32 ws2_32)
 endif()
@@ -17,3 +17,4 @@ target_include_directories(Node PUBLIC include)
 if(ENABLE_CLOG)
 	target_link_libraries(Node clog)
 endif()
+
