@@ -21,6 +21,18 @@ node::Node::~Node() {
 #endif
 }
 
+void node::Node::setOnEventListener(node::Events events, node::OnEventListener *eventListener){
+	eventListeners[events].push_back(eventListener);
+}
+
+void node::Node::fireEvent(Events events){
+	for ( auto &c : eventListeners[events] ){
+		if(c){
+			c->onEvent(events, this);
+		}
+	}
+}
+
 int node::Node::process(int jlen, job *jobs, const char *cmd) {
   if (cmd == NULL)
     return -1;
@@ -87,6 +99,7 @@ const char *node::Node::readln() {
       // log_inf("SERVER", "Content read[%d]: %c", ptr, buf[ptr]);
       if (buf[ptr] == '\n' || buf[ptr] == '\r') {
         buf[ptr] = '\0';
+	fireEvent(Events::ReadLine);
         return buf;
       }
     } else if (bread == 0) { // EOF hit, client disconnected

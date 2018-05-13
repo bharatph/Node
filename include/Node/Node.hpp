@@ -2,6 +2,8 @@
 #define _NODE "NODE"
 #include <cstring>
 #include <iostream>
+#include <vector>
+#include <map>
 #if defined(__linux__) || defined(__APPLE__)
 
 #if defined(__linux__) && defined(kernel_version_2_4)
@@ -26,6 +28,13 @@ typedef int ssize_t;
 #error OS Not supported
 #endif
 
+namespace node {
+class Node;
+}
+
+#include <Node/Events.hpp>
+#include <Node/listener/OnEventListener.hpp>
+
 #ifndef BUFFER_SIZE
 #define BUFFER_SIZE 256
 #endif
@@ -45,6 +54,8 @@ protected:
   SOCKET node_sock;
   SOCKET start_server(int);
   SOCKET connect_server(const char *, int);
+
+  std::map<Events, std::vector<OnEventListener*>> eventListeners;
 
 public:
 #define SH_BUFSIZE 1024 // shell read buffer size
@@ -69,6 +80,9 @@ public:
   Node(SOCKET);
   ~Node(void);
 
+  void setOnEventListener(Events, OnEventListener *eventListener);
+  void fireEvent(Events);
+
   int writeln(std::string);
   int writeln(const char *, int);
   const char *readln(void);
@@ -85,5 +99,5 @@ public:
   int process(int, job *, const char *);
   void close(void);
 };
-}; // namespace node
+} // namespace node
 #endif
