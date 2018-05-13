@@ -12,9 +12,4 @@ endif()
 set_target_properties(Node PROPERTIES VERSION ${PROJECT_VERSION})
 set_target_properties(Node PROPERTIES SOVERSION 1)
 set_target_properties(Node PROPERTIES PUBLIC_HEADER ${Node_HDRS})
-
 target_include_directories(Node PUBLIC include)
-if(ENABLE_CLOG)
-	target_link_libraries(Node clog)
-endif()
-

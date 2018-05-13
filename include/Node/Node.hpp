@@ -26,8 +26,6 @@ typedef int ssize_t;
 #error OS Not supported
 #endif
 
-//#include <clog/clog.h>
-
 #ifndef BUFFER_SIZE
 #define BUFFER_SIZE 256
 #endif
@@ -36,12 +34,10 @@ typedef int ssize_t;
 #define CON_MAX_ATTEMPTS 5
 #endif
 
-#ifndef CLOG_H
 #define log_inf(...)
 #define log_err(...)
 #define log_per(...)
 #define log_fat(...)
-#endif
 
 namespace node {
 class Node {
