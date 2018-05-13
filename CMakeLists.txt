@@ -22,3 +22,11 @@ install (TARGETS Node
         ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib
 	RUNTIME DESTINATION bin)
+
+
+add_executable(node_test_exec test/node_test.cpp)
+target_compile_features(node_test_exec PRIVATE cxx_enum_forward_declarations)
+target_include_directories(node_test_exec PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(node_test_exec node)
+
+add_test(node_test ${CMAKE_BINARY_DIR}/node_test_exec)
