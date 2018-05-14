@@ -29,6 +29,7 @@ class NodeListener : public OnEventListener {
 
 int main(int argc, char *argv[]){
 	Node *n = new Node();
+	n->setOnEventListener(new NodeListener());
 	n->accept(6555);
 	return n->wait(); //TODO add sleep to wait
 }
