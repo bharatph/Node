@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <future>
 #if defined(__linux__) || defined(__APPLE__)
 
 #if defined(__linux__) && defined(kernel_version_2_4)
@@ -50,38 +51,25 @@ class Node;
 
 namespace node {
 class Node {
-protected:
+private:
   SOCKET node_sock;
   SOCKET start_server(int);
   SOCKET connect_server(const char *, int);
-
-  std::map<Events, std::vector<OnEventListener*>> eventListeners;
+  bool isNodeConnected = true;
+  std::vector<OnEventListener*> eventListeners;
 
 public:
-#define SH_BUFSIZE 1024 // shell read buffer size
-#define SH_TOK_BUFSIZE 64
-#define SH_TOK_DELIM " \t\r\n\a" // shell token delimeter
-
-  typedef struct {
-    const char *word;
-    const char letter;
-    const char *description;
-  } option;
-
-  typedef struct {
-    const char *command;
-    const char *info;
-    int (*function)(int, char **, Node *);
-    int opt_length;
-    option *options;
-  } job;
+  std::string buffer;
+  int _read();
 
   Node(void);
   Node(SOCKET);
   ~Node(void);
 
-  void setOnEventListener(Events, OnEventListener *eventListener);
-  void fireEvent(Events);
+  int wait();
+
+  void setOnEventListener(OnEventListener *eventListener);
+  void fireEvent(Events, Node *);
 
   int writeln(std::string);
   int writeln(const char *, int);
@@ -93,10 +81,8 @@ public:
   int read_file(char *, char *);
 #endif
 
-  Node *accept(int);
+  bool accept(int);
   int connect(const char *, int);
-
-  int process(int, job *, const char *);
   void close(void);
 };
 } // namespace node

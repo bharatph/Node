@@ -6,20 +6,29 @@
 using namespace std;
 using namespace node;
 
+
+
 class NodeListener : public OnEventListener {
+	private:
+	void handleNode(Node *n){
+		n->setOnEventListener(this);
+	}
 	public:
 	void onEvent(Events events, Node *n) override {
-		if(events == Events::ReadLine){
-			cout << "Started Reading" << endl;
+		switch(events){
+		case Events::ReadLine | Events::Read:
+			cout << n->buffer << endl;
 			n->writeln("OK");
-		}
-	}	
+			break;
+		case Events::Accept:
+			handleNode(n);
+			break;
+		}	
+	}
 };
 
 int main(int argc, char *argv[]){
 	Node *n = new Node();
-	Node *cli = n->accept(6555);
-	cli->setOnEventListener(Events::ReadLine, new NodeListener()); 
-	cli->readln();
-	return 0;
+	n->accept(6555);
+	return n->wait(); //TODO add sleep to wait
 }
