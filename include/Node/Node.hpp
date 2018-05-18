@@ -19,7 +19,6 @@
 #include <unistd.h>
 typedef int SOCKET;
 #define INVALID_SOCKET -1
-
 #elif defined(_WIN32)
 #include <winsock2.h>
 #define close(node_sock) closesocket(node_sock)
@@ -28,6 +27,8 @@ typedef int ssize_t;
 #else
 #error OS Not supported
 #endif
+
+#include <clog/clog.h>
 
 namespace node {
 class Node;
@@ -44,31 +45,33 @@ class Node;
 #define CON_MAX_ATTEMPTS 5
 #endif
 
-#define log_inf(...)
-#define log_err(...)
-#define log_per(...)
-#define log_fat(...)
-
 namespace node {
+  static constexpr int NODE_DEFAULT_PORT = 5555;
 class Node {
 private:
   SOCKET node_sock;
   SOCKET start_server(int);
   SOCKET connect_server(const char *, int);
+  int serverPort = NODE_DEFAULT_PORT;
+  int clientPort = NODE_DEFAULT_PORT;
+  std::string clientHostname = "localhost";
   bool isNodeConnected = true;
   std::vector<OnEventListener*> eventListeners;
+
+  Node(SOCKET);
+  bool accept(int);
 
 public:
   std::string buffer;
   int _read();
 
   Node(void);
-  Node(SOCKET);
   ~Node(void);
 
   int wait();
 
   void setOnEventListener(OnEventListener *eventListener);
+  void setServerPort(int);
   void fireEvent(Events, Node *);
 
   int writeln(std::string);
@@ -81,7 +84,7 @@ public:
   int read_file(char *, char *);
 #endif
 
-  bool accept(int);
+  void start();
   int connect(const char *, int);
   void close(void);
 };

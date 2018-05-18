@@ -32,9 +32,8 @@ int node::Node::_read(){
 	while(isNodeConnected){
 		if(node_sock != INVALID_SOCKET){
 			std::string buffer = readln();
-			Node *node = new Node(node_sock);
-			node->buffer = buffer;
-			fireEvent(Events::ReadLine, node);
+			this->buffer = buffer;
+			fireEvent(Events::ReadLine, this);
 		}
 	}
 	return 0;
@@ -43,6 +42,14 @@ int node::Node::_read(){
 
 void node::Node::setOnEventListener(node::OnEventListener *eventListener){
 	eventListeners.push_back(eventListener);
+}
+
+void node::Node::setServerPort(int serverPort){
+  this->serverPort = serverPort > 0 && serverPort <= 65536 ? serverPort : NODE_DEFAULT_PORT;
+}
+
+void node::Node::start(){
+  accept(serverPort);
 }
 
 void node::Node::fireEvent(Events events, Node *n){
@@ -103,6 +110,7 @@ int node::Node::connect(const char *hostname, int port) {
   if (connect_server(hostname, port) == INVALID_SOCKET) {
     return -1;
   }
+  fireEvent(Connect, this);
   return 0;
 }
 
@@ -158,7 +166,7 @@ SOCKET node::Node::connect_server(const char *hostname, int port) {
 #endif
 
 bool node::Node::accept(int port) {
-  int node_status = start_server(port);
+  SOCKET node_status = start_server(port);
   if (node_status < 0){
     log_err(_NODE, "Cannot establish service");
     return false;

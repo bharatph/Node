@@ -10,18 +10,18 @@ using namespace node;
 
 class NodeListener : public OnEventListener {
 	private:
-	void handleNode(Node *n){
-		n->setOnEventListener(this);
+	void onAccept(Node *n){
+		n->setOnEventListener(new NodeListener());
 	}
 	public:
 	void onEvent(Events events, Node *n) override {
 		switch(events){
 		case Events::ReadLine | Events::Read:
-			cout << n->buffer << endl;
+			cout << "CONT:" << n->buffer << endl;
 			n->writeln("OK");
 			break;
 		case Events::Accept:
-			handleNode(n);
+			onAccept(n);
 			break;
 		}	
 	}
@@ -30,6 +30,7 @@ class NodeListener : public OnEventListener {
 int main(int argc, char *argv[]){
 	Node *n = new Node();
 	n->setOnEventListener(new NodeListener());
-	n->accept(6555);
+	n->setServerPort(5555);
+	n->start();
 	return n->wait(); //TODO add sleep to wait
 }

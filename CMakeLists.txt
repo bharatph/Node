@@ -7,12 +7,11 @@ configure_file( ${PROJECT_SOURCE_DIR}/config.h.in ${PROJECT_SOURCE_DIR}/config.h
 
 add_library(Node ${Node_HDRS} ${Node_SRCS})
 target_compile_features(Node PRIVATE cxx_enum_forward_declarations)
+target_link_libraries(Node -lclog)
 if(WIN32)
 	target_link_libraries(Node wsock32 ws2_32)
 endif()
 set_target_properties(Node PROPERTIES VERSION ${PROJECT_VERSION})
-set_target_properties(Node PROPERTIES SOVERSION 1)
-set_target_properties(Node PROPERTIES PUBLIC_HEADER ${Node_HDRS})
 target_include_directories(Node PUBLIC include)
 
 install(FILES ${Node_HDRS} DESTINATION include/Node)
